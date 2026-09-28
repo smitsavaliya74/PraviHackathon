@@ -1,0 +1,401 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── ENUMS ──────────────────────────────────────────────
+
+enum Role {
+  SUPER_ADMIN
+  STATE_ADMIN
+  DISTRICT_ADMIN
+  DEPT_ADMIN
+  FIELD_OFFICER
+  AUDITOR
+}
+
+enum AssetStatus {
+  PLANNED
+  PROCURED
+  INSTALLED
+  IN_USE
+  UNDER_MAINTENANCE
+  RETIRED
+  DISPOSED
+}
+
+enum AssetCategory {
+  ROAD
+  BRIDGE
+  BUILDING
+  TRANSFORMER
+  WATER_PUMP
+  STREETLIGHT
+  VEHICLE
+  IT_EQUIPMENT
+  OTHER
+}
+
+enum AssetCondition {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+  CRITICAL
+}
+
+enum WorkOrderStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum WorkOrderPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum DepreciationMethod {
+  STRAIGHT_LINE
+  DECLINING_BALANCE
+}
+
+enum CitizenReportStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  LINKED
+  RESOLVED
+  REJECTED
+}
+
+// ─── LOCATION HIERARCHY ─────────────────────────────────
+
+model Country {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  code      String   @unique
+  states    State[]
+  users     User[]
+  createdAt DateTime @default(now())
+}
+
+model State {
+  id        String     @id @default(uuid())
+  name      String
+  code      String
+  countryId String
+  country   Country    @relation(fields: [countryId], references: [id])
+  districts District[]
+  users     User[]
+  createdAt DateTime   @default(now())
+
+  @@unique([countryId, code])
+}
+
+model District {
+  id          String       @id @default(uuid())
+  name        String
+  code        String
+  stateId     String
+  state       State        @relation(fields: [stateId], references: [id])
+  departments Department[]
+  users       User[]
+  createdAt   DateTime     @default(now())
+
+  @@unique([stateId, code])
+}
+
+// ─── DEPARTMENT ─────────────────────────────────────────
+
+model Department {
+  id         String   @id @default(uuid())
+  name       String
+  code       String   @unique
+  districtId String
+  district   District @relation(fields: [districtId], references: [id])
+  users      User[]
+  assets     Asset[]
+  offices    Office[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// ─── OFFICE ─────────────────────────────────────────────
+
+model Office {
+  id           String     @id @default(uuid())
+  name         String
+  code         String     @unique
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  users        User[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+// ─── USER ───────────────────────────────────────────────
+
+model User {
+  id             String       @id @default(uuid())
+  email          String       @unique
+  passwordHash   String
+  name           String
+  role           Role
+  departmentId   String?
+  department     Department?  @relation(fields: [departmentId], references: [id])
+  officeId       String?
+  office         Office?      @relation(fields: [officeId], references: [id])
+  districtId     String?
+  district       District?    @relation(fields: [districtId], references: [id])
+  stateId        String?
+  state          State?       @relation(fields: [stateId], references: [id])
+  countryId      String?
+  country        Country?     @relation(fields: [countryId], references: [id])
+  
+  phone          String?
+  isActive       Boolean      @default(true)
+  refreshToken   String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  inspections    Inspection[]
+  workOrders     WorkOrder[]  @relation("AssignedTechnician")
+  createdAssets  Asset[]      @relation("CreatedBy")
+  auditLogs      AuditLog[]
+
+  @@index([role])
+  @@index([departmentId])
+  @@index([officeId])
+  @@index([districtId])
+  @@index([stateId])
+  @@index([countryId])
+}
+
+// ─── ASSET ──────────────────────────────────────────────
+
+model Asset {
+  id               String             @id @default(uuid())
+  assetId          String             @unique
+  name             String
+  description      String?
+  category         AssetCategory
+  status           AssetStatus        @default(PLANNED)
+  condition        AssetCondition     @default(GOOD)
+
+  latitude         Float
+  longitude        Float
+  geofenceRadius   Float              @default(100)
+  address          String?
+
+  purchaseDate     DateTime?
+  purchaseCost     Float?
+  currentValue     Float?
+  vendor           String?
+  warrantyExpiry   DateTime?
+  depMethod        DepreciationMethod @default(STRAIGHT_LINE)
+  usefulLifeYears  Int                @default(10)
+  salvageValue     Float?             @default(0)
+
+  serialNumber     String?
+  manufacturer     String?
+  model            String?
+  notes            String?
+  photos           String[]
+  documents        String[]
+  photoHashes      String[]
+
+  healthScore      Int?
+
+  departmentId     String
+  department       Department         @relation(fields: [departmentId], references: [id])
+  createdById      String
+  createdBy        User               @relation("CreatedBy", fields: [createdById], references: [id])
+
+  statusHistory    AssetStatusHistory[]
+  inspections      Inspection[]
+  maintenanceSched MaintenanceSchedule[]
+  workOrders       WorkOrder[]
+  citizenReports   CitizenReport[]
+
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  @@index([status])
+  @@index([category])
+  @@index([departmentId])
+  @@index([assetId])
+  @@index([warrantyExpiry])
+  @@index([healthScore])
+}
+
+// ─── ASSET STATUS HISTORY ───────────────────────────────
+
+model AssetStatusHistory {
+  id         String      @id @default(uuid())
+  assetId    String
+  asset      Asset       @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  fromStatus AssetStatus?
+  toStatus   AssetStatus
+  changedById String?
+  reason     String?
+  metadata   Json?
+  createdAt  DateTime    @default(now())
+
+  @@index([assetId])
+  @@index([createdAt])
+}
+
+// ─── INSPECTION ─────────────────────────────────────────
+
+model Inspection {
+  id              String   @id @default(uuid())
+  assetId         String
+  asset           Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  inspectorId     String
+  inspector       User     @relation(fields: [inspectorId], references: [id])
+
+  latitude        Float
+  longitude       Float
+  accuracy        Float?
+  distanceFromAsset Float
+  withinGeofence  Boolean
+  deviceInfo      String?
+
+  photoPath       String?
+  photoHash       String?
+  notes           String?
+  condition       AssetCondition?
+  timestamp       DateTime @default(now())
+
+  createdAt       DateTime @default(now())
+
+  @@index([assetId])
+  @@index([inspectorId])
+  @@index([createdAt])
+}
+
+// ─── MAINTENANCE ────────────────────────────────────────
+
+model MaintenanceSchedule {
+  id              String   @id @default(uuid())
+  assetId         String
+  asset           Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  title           String
+  description     String?
+  intervalDays    Int
+  lastPerformed   DateTime?
+  nextDue         DateTime
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([nextDue])
+  @@index([assetId])
+}
+
+model WorkOrder {
+  id              String            @id @default(uuid())
+  assetId         String
+  asset           Asset             @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  title           String
+  description     String?
+  status          WorkOrderStatus   @default(OPEN)
+  priority        WorkOrderPriority @default(MEDIUM)
+  estimatedCost   Float?
+  actualCost      Float?
+  technicianId    String?
+  technician      User?             @relation("AssignedTechnician", fields: [technicianId], references: [id])
+  startedAt       DateTime?
+  completedAt     DateTime?
+  notes           String?
+
+  citizenReportId String?           @unique
+  citizenReport   CitizenReport?    @relation(fields: [citizenReportId], references: [id])
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([assetId])
+  @@index([status])
+  @@index([technicianId])
+  @@index([priority])
+}
+
+// ─── AUDIT LOG ──────────────────────────────────────────
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  sequence    Int      @unique @default(autoincrement())
+  actorId     String?
+  actor       User?    @relation(fields: [actorId], references: [id])
+  action      String
+  entityType  String
+  entityId    String?
+  before      Json?
+  after       Json?
+  metadata    Json?
+  prevHash    String?
+  hash        String
+  timestamp   DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([timestamp])
+  @@index([sequence])
+}
+
+// ─── CITIZEN REPORT ─────────────────────────────────────
+
+model CitizenReport {
+  id          String              @id @default(uuid())
+  title       String
+  description String
+  category    AssetCategory?
+  photoPath   String?
+  latitude    Float?
+  longitude   Float?
+  reporterName  String?
+  reporterPhone String?
+  reporterEmail String?
+  status      CitizenReportStatus @default(SUBMITTED)
+
+  assetId     String?
+  asset       Asset?              @relation(fields: [assetId], references: [id])
+
+  workOrder   WorkOrder?
+
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ─── ANOMALY / ALERT ────────────────────────────────────
+
+model AnomalyAlert {
+  id          String   @id @default(uuid())
+  type        String
+  severity    String
+  title       String
+  description String
+  entityType  String
+  entityId    String
+  metadata    Json?
+  isResolved  Boolean  @default(false)
+  resolvedAt  DateTime?
+  resolvedBy  String?
+  createdAt   DateTime @default(now())
+
+  @@index([type])
+  @@index([isResolved])
+  @@index([createdAt])
+}

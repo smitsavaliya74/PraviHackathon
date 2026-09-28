@@ -1,0 +1,87 @@
+@baseUrl = http://localhost:4000/api
+@contentType = application/json
+
+### -------------------------------------------------------------
+### 1. AUTHENTICATION (Run this first to get a token)
+### -------------------------------------------------------------
+
+# @name loginRequest
+POST {{baseUrl}}/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "super@assettrust.gov",
+  "password": "password123"
+}
+
+### Save Token (If using VS Code REST Client)
+@token = {{loginRequest.response.body.data.token}}
+
+### -------------------------------------------------------------
+### 2. ASSETS
+### -------------------------------------------------------------
+
+### Get all assets
+GET {{baseUrl}}/assets
+Authorization: Bearer {{token}}
+
+### Get a single asset by ID (Replace ID with a real one from above)
+GET {{baseUrl}}/assets/cm1ln0sxg0000y1n7h6b5b5b5
+Authorization: Bearer {{token}}
+
+### Create a new asset
+POST {{baseUrl}}/assets
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{
+  "name": "Backup Generator XYZ",
+  "assetId": "GEN-9901",
+  "category": "FACILITY",
+  "status": "PLANNED",
+  "latitude": 21.17,
+  "longitude": 72.83,
+  "purchaseCost": 50000,
+  "healthScore": 100
+}
+
+### -------------------------------------------------------------
+### 3. WORK ORDERS
+### -------------------------------------------------------------
+
+### Get all work orders
+GET {{baseUrl}}/work-orders
+Authorization: Bearer {{token}}
+
+### Create a new work order
+POST {{baseUrl}}/work-orders
+Content-Type: {{contentType}}
+Authorization: Bearer {{token}}
+
+{
+  "title": "Routine Inspection for Generator",
+  "description": "Check oil levels and battery.",
+  "priority": "MEDIUM",
+  "status": "OPEN",
+  "assetId": "cm1ln0sxg0000y1n7h6b5b5b5" 
+}
+
+### -------------------------------------------------------------
+### 4. AUDIT & HASH CHAIN
+### -------------------------------------------------------------
+
+### Get the audit log (Shows Who did What)
+GET {{baseUrl}}/audit?limit=10
+Authorization: Bearer {{token}}
+
+### Verify Cryptographic Hash Chain
+GET {{baseUrl}}/audit/verify
+Authorization: Bearer {{token}}
+
+### -------------------------------------------------------------
+### 5. ANOMALIES (AI ALERTS)
+### -------------------------------------------------------------
+
+### Get active anomalies
+GET {{baseUrl}}/anomalies?isResolved=false
+Authorization: Bearer {{token}}
