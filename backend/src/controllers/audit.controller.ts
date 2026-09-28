@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma';
-import { verifyHashChain } from '../services/audit.service';
+import { verifyAuditChain } from '../services/audit.service';
 
 export class AuditController {
   async getLogs(req: Request, res: Response, next: NextFunction) {
@@ -21,7 +21,7 @@ export class AuditController {
 
   async verify(req: Request, res: Response, next: NextFunction) {
     try {
-      const result = await verifyHashChain();
+      const result = await verifyAuditChain();
       res.json({ data: result });
     } catch (error) {
       next(error);

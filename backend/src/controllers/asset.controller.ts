@@ -22,7 +22,7 @@ export class AssetController {
 
   async getAssetById(req: Request, res: Response, next: NextFunction) {
     try {
-      const asset = await assetService.getAssetById(req.params.id);
+      const asset = await assetService.getAssetById((req.params.id as string));
       res.json({ data: asset });
     } catch (error) {
       next(error);
@@ -48,7 +48,7 @@ export class AssetController {
 
   async updateAsset(req: Request, res: Response, next: NextFunction) {
     try {
-      const asset = await assetService.updateAsset(req.params.id, req.body, req.user!.userId);
+      const asset = await assetService.updateAsset((req.params.id as string), req.body, req.user!.userId);
       res.json({ data: asset });
     } catch (error) {
       next(error);
@@ -57,7 +57,7 @@ export class AssetController {
 
   async deleteAsset(req: Request, res: Response, next: NextFunction) {
     try {
-      await assetService.deleteAsset(req.params.id, req.user!.userId);
+      await assetService.deleteAsset((req.params.id as string), req.user!.userId);
       res.json({ message: 'Asset deleted' });
     } catch (error) {
       next(error);

@@ -17,7 +17,7 @@ export class AnomalyController {
 
   async resolveAnomaly(req: Request, res: Response, next: NextFunction) {
     try {
-      const anomaly = await anomalyService.resolveAnomaly(req.params.id, req.user!.userId);
+      const anomaly = await anomalyService.resolveAnomaly((req.params.id as string), req.user!.userId);
       res.json({ data: anomaly });
     } catch (error) {
       next(error);

@@ -71,7 +71,7 @@ export class UserController {
    */
   async getUser(req: Request, res: Response, next: NextFunction) {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
       const user = await prisma.user.findUnique({
         where: { id },
         select: {
@@ -111,7 +111,7 @@ export class UserController {
    */
   async updateUser(req: Request, res: Response, next: NextFunction) {
     try {
-      const { id } = req.params;
+      const id = req.params.id as string;
       const { name, phone, role, departmentId, isActive } = req.body;
 
       const existing = await prisma.user.findUnique({ where: { id } });

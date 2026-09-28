@@ -26,7 +26,7 @@ export class WorkOrderController {
 
   async updateWorkOrder(req: Request, res: Response, next: NextFunction) {
     try {
-      const order = await workOrderService.updateWorkOrder(req.params.id, req.body, req.user!.userId);
+      const order = await workOrderService.updateWorkOrder((req.params.id as string), req.body, req.user!.userId);
       res.json({ data: order });
     } catch (error) {
       next(error);
